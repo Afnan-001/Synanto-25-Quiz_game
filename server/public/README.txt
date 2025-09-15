@@ -1,0 +1,1 @@
+Place your map image here as 'map.jpg' (high-resolution). If you don't, a placeholder background will show.
