@@ -69,7 +69,6 @@ export default function App() {
     fetchState();
   }, []);
 
-  // Clean up interval on unmount
   useEffect(() => {
     return () => {
       if (timerInterval) {
@@ -85,7 +84,6 @@ export default function App() {
     }
     
     try {
-      // Start user session
       const userResponse = await fetch(`${SERVER}/api/users/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,12 +133,10 @@ export default function App() {
       if (j.ok && j.correct) {
         setAnswer("");
         if (current + 1 >= questions.length) {
-          // Quiz completed
           setDone(true);
           const taken = Date.now() - startTime;
           setTimeTakenMs(taken);
-          
-          // Stop the timer
+    
           if (timerInterval) {
             clearInterval(timerInterval);
             setTimerInterval(null);
@@ -148,7 +144,6 @@ export default function App() {
 
           if (userId && !hasSubmitted) {
             try {
-              // Complete user session
               const completeResponse = await fetch(`${SERVER}/api/users/complete/${userId}`, {
                 method: "POST"
               });
@@ -199,7 +194,6 @@ export default function App() {
     }
   };
 
-  // UI states
   if (loadingState) return <p>Loading...</p>;
 
   if (!gameStarted) {

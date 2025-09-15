@@ -4,9 +4,8 @@ function AdminToggle() {
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = import.meta.env.VITE_SERVER; // <-- use the environment variable
+  const API_URL = import.meta.env.VITE_SERVER;
 
-  // Fetch current game state
   useEffect(() => {
     fetch(`${API_URL}/api/game-state`)
       .then(res => res.json())
@@ -16,7 +15,6 @@ function AdminToggle() {
       });
   }, [API_URL]);
 
-  // Toggle game state
   const handleToggle = async () => {
     const newState = !started;
     const res = await fetch(`${API_URL}/api/game-state/toggle`, {
