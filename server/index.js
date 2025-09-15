@@ -7,12 +7,11 @@ const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
-dotenv.config(); // <-- load .env at the top
+// Load environment variables
+dotenv.config();
 
-// ------------------- CONFIG -------------------
 const PORT = process.env.PORT || 4000;
-const MONGO_URI =
-  process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGO_URI;
 const SECRET_DIGITS = ["1", "1", "1", "0", "2", "5"];
 const MAP_IMAGE_PATH = path.join(__dirname, "public", "map1.png");
 
@@ -29,11 +28,15 @@ mongoose
 
 // ------------------- Import Routes -------------------
 const gameStateRoutes = require("./gameState");
-const userRoutes = require("./userRoutes"); 
+const userRoutes = require("./userRoutes");
 
 app.use("/api/game-state", gameStateRoutes);
 app.use("/api/users", userRoutes);
 
+// ------------------- Root route for health check -------------------
+app.get("/", (req, res) => {
+  res.send("Backend is running!");
+});
 
 // ------------------- Questions -------------------
 const questions = [
@@ -60,13 +63,13 @@ const questions = [
 
 // ------------------- API Endpoints -------------------
 
-// ✅ Get all questions (no answers)
+// Get all questions (no answers)
 app.get("/api/questions", (req, res) => {
   const qs = questions.map(({ id, q }) => ({ id, q }));
   res.json(qs);
 });
 
-// ✅ Validate answer
+// Validate answer
 app.post("/api/validate", (req, res) => {
   const { questionId, answer } = req.body;
   const q = questions.find((x) => x.id === questionId);
@@ -78,7 +81,7 @@ app.post("/api/validate", (req, res) => {
   res.json({ ok: true, correct });
 });
 
-// ✅ Generate clue PDF with digit
+// Generate clue PDF with digit
 app.get("/api/generate-clue", async (req, res) => {
   try {
     const questionId = parseInt(req.query.questionId) || 1;
@@ -141,5 +144,5 @@ app.get("/api/generate-clue", async (req, res) => {
   }
 });
 
-// ------------------- START SERVER -------------------
+// ------------------- Start Server -------------------
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
