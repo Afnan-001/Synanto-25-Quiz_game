@@ -1,14 +1,12 @@
-// gameState.js
 const express = require("express");
 const GameState = require("./models/GameState");
 const router = express.Router();
 
-// ✅ Get current game state
 router.get("/", async (req, res) => {
   try {
     let state = await GameState.findOne();
     if (!state) {
-      // create default if not exists
+      
       state = await GameState.create({ started: false });
     }
     res.json({ started: state.started });
@@ -17,7 +15,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ✅ Toggle game state
 router.post("/toggle", async (req, res) => {
   try {
     const { started } = req.body;

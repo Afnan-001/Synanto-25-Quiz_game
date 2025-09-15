@@ -7,12 +7,12 @@ const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
-// Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 4000;
+// CONFIG
+const PORT = process.env.PORT;
 const MONGO_URI = process.env.MONGO_URI;
-const SECRET_DIGITS = ["1", "1", "1", "0", "2", "5"];
+const SECRET_DIGITS = ["1", "1", "1", "0", "2", "5"]; // digits for each question's PDF
 const MAP_IMAGE_PATH = path.join(__dirname, "public", "map1.png");
 
 const app = express();
@@ -20,20 +20,17 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use("/public", express.static(path.join(__dirname, "public")));
 
-// ------------------- MongoDB -------------------
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// ------------------- Import Routes -------------------
 const gameStateRoutes = require("./gameState");
 const userRoutes = require("./userRoutes");
 
 app.use("/api/game-state", gameStateRoutes);
 app.use("/api/users", userRoutes);
 
-// ------------------- Root route for health check -------------------
 app.get("/", (req, res) => {
   res.send("Backend is running!");
 });
@@ -63,13 +60,13 @@ const questions = [
 
 // ------------------- API Endpoints -------------------
 
-// Get all questions (no answers)
+// Return questions (without answers)
 app.get("/api/questions", (req, res) => {
   const qs = questions.map(({ id, q }) => ({ id, q }));
   res.json(qs);
 });
 
-// Validate answer
+// Validate an answer for a question id
 app.post("/api/validate", (req, res) => {
   const { questionId, answer } = req.body;
   const q = questions.find((x) => x.id === questionId);
@@ -81,7 +78,7 @@ app.post("/api/validate", (req, res) => {
   res.json({ ok: true, correct });
 });
 
-// Generate clue PDF with digit
+// Generate PDF with the specific digit for the question placed at a random position on top of a map
 app.get("/api/generate-clue", async (req, res) => {
   try {
     const questionId = parseInt(req.query.questionId) || 1;
@@ -91,7 +88,7 @@ app.get("/api/generate-clue", async (req, res) => {
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([595, 842]); // A4 size
 
-    // Background image (map)
+    // Embed map image as background
     if (!fs.existsSync(MAP_IMAGE_PATH)) {
       const { width, height } = page.getSize();
       page.drawRectangle({
@@ -115,16 +112,18 @@ app.get("/api/generate-clue", async (req, res) => {
       } else {
         embedded = await pdfDoc.embedPng(mapBytes);
       }
+      // Draw map as full background
       page.drawImage(embedded, { x: 0, y: 0, width: 595, height: 842 });
     }
 
-    // Random position for digit
+    // Random position for the digit (smaller margins for more coverage)
     const margin = 20;
     const maxX = 595 - margin;
     const maxY = 842 - margin;
     const randomX = Math.floor(Math.random() * (maxX - margin)) + margin;
     const randomY = Math.floor(Math.random() * (maxY - margin)) + margin;
 
+    // Draw visible digit on top of the map
     page.drawText(secretDigit, {
       x: randomX,
       y: randomY,
@@ -144,5 +143,4 @@ app.get("/api/generate-clue", async (req, res) => {
   }
 });
 
-// ------------------- Start Server -------------------
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
