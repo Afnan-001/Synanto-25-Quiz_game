@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./leaderboard.css"; // Import CSS
+const SERVER = import.meta.env.VITE_SERVER;
 
 const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState([]);
@@ -9,7 +10,7 @@ const Leaderboard = () => {
   // Fetch leaderboard data
 const fetchLeaderboard = async () => {
   try {
-    const response = await fetch("http://localhost:4000/api/leaderboard");
+    const response = await fetch(`${SERVER}/api/leaderboard`);
     if (!response.ok) {
       throw new Error("Failed to fetch leaderboard data");
     }
