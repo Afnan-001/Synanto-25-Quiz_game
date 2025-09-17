@@ -69,6 +69,18 @@ app.post("/api/users", async (req, res) => {
   }
 });
 
+app.post("/api/users/start", async (req, res) => {
+  try {
+    const { name } = req.body;
+    const user = new User({ name });
+    await user.save();
+    res.json({ ok: true, user });
+  } catch (error) {
+    res.status(400).json({ ok: false, error: error.message });
+  }
+});
+
+
 app.get("/api/users/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
