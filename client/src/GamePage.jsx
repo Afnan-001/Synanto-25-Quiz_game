@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import "./styles.css"
+import "./styles.css";
 const SERVER = import.meta.env.VITE_SERVER;
 
 // Generate a simple device ID based on browser characteristics
@@ -53,6 +53,9 @@ export default function App() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [timerInterval, setTimerInterval] = useState(null);
   const [userId, setUserId] = useState(localStorage.getItem("quizUserId") || null);
+  const [showClue, setShowClue] = useState(false);
+  const [clueImage, setClueImage] = useState("");
+  const [isLoadingClue, setIsLoadingClue] = useState(false);
 
   useEffect(() => {
     const fetchState = async () => {
@@ -169,21 +172,15 @@ export default function App() {
             setMsg(`Congratulations! Quiz completed in ${formatTime(taken)}!`);
           }
         } else {
-          // Trigger PDF download for questions 1–6
-          const pdfRes = await fetch(
-            `${SERVER}/api/generate-clue?questionId=${q.id}`
-          );
-          const blob = await pdfRes.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `clue_q${q.id}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          window.URL.revokeObjectURL(url);
-
-          setMsg("Correct! PDF downloaded.");
+          // Show PNG image instead of downloading PDF
+          setIsLoadingClue(true);
+          setMsg("Correct! Loading your clue...");
+          
+          // Generate a unique URL to prevent caching issues
+          const imageUrl = `${SERVER}/api/generate-clue?questionId=${q.id}&t=${Date.now()}`;
+          setClueImage(imageUrl);
+          setShowClue(true);
+          setIsLoadingClue(false);
           setCurrent(current + 1);
         }
       } else {
@@ -192,6 +189,11 @@ export default function App() {
     } catch (err) {
       setMsg("Error checking answer.");
     }
+  };
+
+  const closeClue = () => {
+    setShowClue(false);
+    setMsg("Continue to the next question!");
   };
 
   if (loadingState) return <p>Loading...</p>;
@@ -216,7 +218,7 @@ export default function App() {
       {!questions.length && (
         <div className="question">
           <h2>Welcome to the Quiz Game!</h2>
-          <div className="muted">Answer questions in order. Each correct answer downloads a PDF with a clue placed at a random position on a map.</div>
+          <div className="muted">Answer questions in order. Each correct answer shows a clue placed at a random position on a map.</div>
           <div style={{marginTop:20}}>
             <div>Username: <strong>{name}</strong></div>
           </div>
@@ -242,7 +244,9 @@ export default function App() {
             />
           </div>
           <div style={{marginTop:12}}>
-            <button onClick={submitAnswer}>Submit Answer</button>
+            <button onClick={submitAnswer} disabled={isLoadingClue}>
+              {isLoadingClue ? "Loading..." : "Submit Answer"}
+            </button>
           </div>
           <div style={{marginTop:12,color:"#9cc"}}> {msg} </div>
         </div>
@@ -253,6 +257,45 @@ export default function App() {
           <h2>Well done — you finished!</h2>
           <p className="muted">You completed the quiz in {formatTime(timeTakenMs)}</p>
           <div style={{marginTop:12,color:"#9cc"}}>{msg}</div>
+        </div>
+      )}
+
+      {showClue && (
+        <div className="clue-modal">
+          <div className="clue-content">
+            <h3>Clue for Question {current}</h3>
+            {isLoadingClue ? (
+              <p>Loading clue...</p>
+            ) : (
+              <>
+                <img 
+                  src={clueImage} 
+                  alt="Clue" 
+                  style={{ 
+                    maxWidth: "100%", 
+                    maxHeight: "60vh", 
+                    border: "2px solid #333",
+                    borderRadius: "8px"
+                  }} 
+                />
+                <p className="muted">Look carefully for the hidden digit on the map!</p>
+                <button 
+                  onClick={closeClue} 
+                  style={{ 
+                    marginTop: "15px", 
+                    padding: "8px 20px",
+                    backgroundColor: "#4CAF50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer"
+                  }}
+                >
+                  Continue to Next Question
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

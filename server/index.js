@@ -13,7 +13,6 @@ dotenv.config();
 const PORT = process.env.PORT;
 const MONGO_URI = process.env.MONGO_URI;
 const SECRET_DIGITS = ["1", "1", "1", "0", "2", "5"]; // digits for each question's PDF
-const MAP_IMAGE_PATH = path.join(__dirname, "public", "map1.png");
 
 const app = express();
 app.use(cors());
@@ -25,11 +24,97 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-const gameStateRoutes = require("./gameState");
-const userRoutes = require("./userRoutes");
+// User Schema
+const UserSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  startTime: {
+    type: Date,
+    default: Date.now
+  },
+  endTime: {
+    type: Date
+  },
+  totalTime: {
+    type: Number // in seconds
+  },
+  completed: {
+    type: Boolean,
+    default: false
+  }
+}, {
+  timestamps: true
+});
 
+const User = mongoose.model("User", UserSchema);
+
+// ------------------- Routes -------------------
+
+// Game state routes
+const gameStateRoutes = require("./gameState");
 app.use("/api/game-state", gameStateRoutes);
-app.use("/api/users", userRoutes);
+
+// User routes
+app.post("/api/users", async (req, res) => {
+  try {
+    const { name } = req.body;
+    const user = new User({ name });
+    await user.save();
+    res.status(201).json(user);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get("/api/users/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.patch("/api/users/:id", async (req, res) => {
+  try {
+    const { completed, endTime, totalTime } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { completed, endTime, totalTime },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Leaderboard route - GET top 10 players with shortest completion time
+app.get("/api/leaderboard", async (req, res) => {
+  try {
+    const leaderboard = await User.find({ 
+      completed: true,
+      totalTime: { $exists: true, $ne: null } 
+    })
+    .sort({ totalTime: 1 }) // Sort by totalTime ascending (shortest first)
+    .limit(10) // Limit to top 10
+    .select('name totalTime'); // Only return name and totalTime fields
+
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Error fetching leaderboard:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("Backend is running!");
@@ -78,68 +163,61 @@ app.post("/api/validate", (req, res) => {
   res.json({ ok: true, correct });
 });
 
-// Generate PDF with the specific digit for the question placed at a random position on top of a map
+// Generate a PNG with the specific digit for the question placed at a random position on top of a map
 app.get("/api/generate-clue", async (req, res) => {
   try {
     const questionId = parseInt(req.query.questionId) || 1;
     const digitIndex = Math.min(questionId - 1, SECRET_DIGITS.length - 1);
     const secretDigit = SECRET_DIGITS[digitIndex];
+    
+    // Determine which map image to use based on question ID
+    const mapNumber = Math.min(questionId, 6); // Use map1-6 for questions 1-6, map6 for question 7+
+    const mapExtension = 'png';// map1.png, map2-6.jpg
+    const MAP_IMAGE_PATH = path.join(__dirname, "public", `map${mapNumber}.${mapExtension}`);
 
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]); // A4 size
+    // Check if we already have a cached image for this digit at a position
+    // For simplicity, we'll generate a new one each time, but you could cache these
+    const { createCanvas, loadImage } = require('canvas');
+    const canvas = createCanvas(800, 600);
+    const ctx = canvas.getContext('2d');
 
-    // Embed map image as background
-    if (!fs.existsSync(MAP_IMAGE_PATH)) {
-      const { width, height } = page.getSize();
-      page.drawRectangle({
-        x: 0,
-        y: 0,
-        width,
-        height,
-        color: rgb(0.95, 0.95, 0.95),
-      });
-      page.drawText("MAP IMAGE MISSING (place map1.png in /public)", {
-        x: 30,
-        y: 800,
-        size: 10,
-      });
-    } else {
-      const mapBytes = fs.readFileSync(MAP_IMAGE_PATH);
-      const ext = path.extname(MAP_IMAGE_PATH).toLowerCase();
-      let embedded;
-      if (ext === ".jpg" || ext === ".jpeg") {
-        embedded = await pdfDoc.embedJpg(mapBytes);
-      } else {
-        embedded = await pdfDoc.embedPng(mapBytes);
-      }
-      // Draw map as full background
-      page.drawImage(embedded, { x: 0, y: 0, width: 595, height: 842 });
+    // Load and draw the map as background
+    try {
+      const mapImage = await loadImage(MAP_IMAGE_PATH);
+      ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
+    } catch (err) {
+      // If map image fails to load, draw a placeholder
+      console.error(`Failed to load map image: ${MAP_IMAGE_PATH}`, err);
+      ctx.fillStyle = '#e0e0e0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#000';
+      ctx.font = '20px Arial';
+      ctx.fillText(`MAP IMAGE MISSING: map${mapNumber}.${mapExtension}`, 50, 50);
     }
 
-    // Random position for the digit (smaller margins for more coverage)
-    const margin = 20;
-    const maxX = 595 - margin;
-    const maxY = 842 - margin;
+    // Random position for the digit
+    const margin = 50;
+    const maxX = canvas.width - margin;
+    const maxY = canvas.height - margin;
     const randomX = Math.floor(Math.random() * (maxX - margin)) + margin;
     const randomY = Math.floor(Math.random() * (maxY - margin)) + margin;
 
-    // Draw visible digit on top of the map
-    page.drawText(secretDigit, {
-      x: randomX,
-      y: randomY,
-      size: 36,
-      color: rgb(1, 0, 0),
-      rotate: degrees(Math.random() * 360),
-      opacity: 1.0,
-    });
+    // Draw the digit on the map
+    ctx.fillStyle = 'red';
+    ctx.font = '48px Arial';
+    ctx.save();
+    ctx.translate(randomX, randomY);
+    ctx.rotate(Math.random() * Math.PI * 2); // Random rotation
+    ctx.fillText(secretDigit, 0, 0);
+    ctx.restore();
 
-    const pdfBytes = await pdfDoc.save();
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "attachment; filename=clue.pdf");
-    res.send(Buffer.from(pdfBytes));
+    // Send the image as PNG
+    res.setHeader('Content-Type', 'image/png');
+    const buffer = canvas.toBuffer('image/png');
+    res.send(buffer);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "PDF generation failed" });
+    res.status(500).json({ error: "Image generation failed" });
   }
 });
 
