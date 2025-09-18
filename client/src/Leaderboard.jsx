@@ -10,12 +10,12 @@ const Leaderboard = () => {
   // Fetch leaderboard data
 const fetchLeaderboard = async () => {
   try {
-    const response = await fetch(`${SERVER}/api/leaderboard`);
+    const response = await fetch(`${SERVER}/api/users/leaderboard`);
     if (!response.ok) {
       throw new Error("Failed to fetch leaderboard data");
     }
     const data = await response.json();
-    setLeaderboard(data);
+    setLeaderboard(data.users || []); // ✅ grab the array
     setLoading(false);
   } catch (err) {
     setError("Failed to fetch leaderboard data");
@@ -23,6 +23,7 @@ const fetchLeaderboard = async () => {
     console.error("Error fetching leaderboard:", err);
   }
 };
+
 
 
   useEffect(() => {

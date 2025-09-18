@@ -19,37 +19,11 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use("/public", express.static(path.join(__dirname, "public")));
 
+// MongoDB connection
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
-
-// User Schema
-const UserSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  startTime: {
-    type: Date,
-    default: Date.now
-  },
-  endTime: {
-    type: Date
-  },
-  totalTime: {
-    type: Number // in seconds
-  },
-  completed: {
-    type: Boolean,
-    default: false
-  }
-}, {
-  timestamps: true
-});
-
-const User = mongoose.model("User", UserSchema);
 
 // ------------------- Routes -------------------
 
@@ -57,76 +31,9 @@ const User = mongoose.model("User", UserSchema);
 const gameStateRoutes = require("./gameState");
 app.use("/api/game-state", gameStateRoutes);
 
-// User routes
-app.post("/api/users", async (req, res) => {
-  try {
-    const { name } = req.body;
-    const user = new User({ name });
-    await user.save();
-    res.status(201).json(user);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.post("/api/users/start", async (req, res) => {
-  try {
-    const { name } = req.body;
-    const user = new User({ name });
-    await user.save();
-    res.json({ ok: true, user });
-  } catch (error) {
-    res.status(400).json({ ok: false, error: error.message });
-  }
-});
-
-
-app.get("/api/users/:id", async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-app.patch("/api/users/:id", async (req, res) => {
-  try {
-    const { completed, endTime, totalTime } = req.body;
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { completed, endTime, totalTime },
-      { new: true }
-    );
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    res.json(user);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Leaderboard route - GET top 10 players with shortest completion time
-app.get("/api/leaderboard", async (req, res) => {
-  try {
-    const leaderboard = await User.find({ 
-      completed: true,
-      totalTime: { $exists: true, $ne: null } 
-    })
-    .sort({ totalTime: 1 }) // Sort by totalTime ascending (shortest first)
-    .limit(10) // Limit to top 10
-    .select('name totalTime'); // Only return name and totalTime fields
-
-    res.json(leaderboard);
-  } catch (error) {
-    console.error('Error fetching leaderboard:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// User routes (✅ use userRoutes.js only)
+const userRoutes = require("./userRoutes");
+app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend is running!");
@@ -181,51 +88,51 @@ app.get("/api/generate-clue", async (req, res) => {
     const questionId = parseInt(req.query.questionId) || 1;
     const digitIndex = Math.min(questionId - 1, SECRET_DIGITS.length - 1);
     const secretDigit = SECRET_DIGITS[digitIndex];
-    
-    // Determine which map image to use based on question ID
-    const mapNumber = Math.min(questionId, 6); // Use map1-6 for questions 1-6, map6 for question 7+
-    const mapExtension = 'png';// map1.png, map2-6.jpg
-    const MAP_IMAGE_PATH = path.join(__dirname, "public", `map${mapNumber}.${mapExtension}`);
 
-    // Check if we already have a cached image for this digit at a position
-    // For simplicity, we'll generate a new one each time, but you could cache these
-    const { createCanvas, loadImage } = require('canvas');
+    const mapNumber = Math.min(questionId, 6);
+    const mapExtension = "png";
+    const MAP_IMAGE_PATH = path.join(
+      __dirname,
+      "public",
+      `map${mapNumber}.${mapExtension}`
+    );
+
+    const { createCanvas, loadImage } = require("canvas");
     const canvas = createCanvas(800, 600);
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
 
-    // Load and draw the map as background
     try {
       const mapImage = await loadImage(MAP_IMAGE_PATH);
       ctx.drawImage(mapImage, 0, 0, canvas.width, canvas.height);
     } catch (err) {
-      // If map image fails to load, draw a placeholder
       console.error(`Failed to load map image: ${MAP_IMAGE_PATH}`, err);
-      ctx.fillStyle = '#e0e0e0';
+      ctx.fillStyle = "#e0e0e0";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#000';
-      ctx.font = '20px Arial';
-      ctx.fillText(`MAP IMAGE MISSING: map${mapNumber}.${mapExtension}`, 50, 50);
+      ctx.fillStyle = "#000";
+      ctx.font = "20px Arial";
+      ctx.fillText(
+        `MAP IMAGE MISSING: map${mapNumber}.${mapExtension}`,
+        50,
+        50
+      );
     }
 
-    // Random position for the digit
     const margin = 50;
     const maxX = canvas.width - margin;
     const maxY = canvas.height - margin;
     const randomX = Math.floor(Math.random() * (maxX - margin)) + margin;
     const randomY = Math.floor(Math.random() * (maxY - margin)) + margin;
 
-    // Draw the digit on the map
-    ctx.fillStyle = 'red';
-    ctx.font = '48px Arial';
+    ctx.fillStyle = "red";
+    ctx.font = "48px Arial";
     ctx.save();
     ctx.translate(randomX, randomY);
-    ctx.rotate(Math.random() * Math.PI * 2); // Random rotation
+    ctx.rotate(Math.random() * Math.PI * 2);
     ctx.fillText(secretDigit, 0, 0);
     ctx.restore();
 
-    // Send the image as PNG
-    res.setHeader('Content-Type', 'image/png');
-    const buffer = canvas.toBuffer('image/png');
+    res.setHeader("Content-Type", "image/png");
+    const buffer = canvas.toBuffer("image/png");
     res.send(buffer);
   } catch (err) {
     console.error(err);

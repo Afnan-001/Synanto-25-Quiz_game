@@ -50,7 +50,10 @@ router.post("/complete/:userId", async (req, res) => {
     user.endTime = endTime;
     user.totalTime = totalTime;
     user.completed = true;
+    console.log("Before save:", user);
     await user.save();
+    console.log("After save:", user);
+
 
     res.json({ 
       ok: true, 

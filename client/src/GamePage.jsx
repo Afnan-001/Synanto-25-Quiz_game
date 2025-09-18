@@ -145,30 +145,35 @@ export default function App() {
             setTimerInterval(null);
           }
 
-          if (userId && !hasSubmitted) {
-            try {
-              const completeResponse = await fetch(`${SERVER}/api/users/complete/${userId}`, {
-                method: "POST"
-              });
-              
-              const completeData = await completeResponse.json();
-              
-              if (completeData.ok) {
-                setMsg(
-                  `Congratulations! Quiz completed in ${formatTime(taken)} Let's see if you made it to the leaderboard!`
-                );
-                setHasSubmitted(true);
-                localStorage.setItem("quizSubmitted", "true");
-              } else {
-                setMsg(
-                  `Congratulations! Quiz completed in ${formatTime(taken)}! ` +
-                    (completeData.error || "Score submission failed.")
-                );
-              }
-            } catch (e) {
-              setMsg(`Congratulations! Quiz completed in ${formatTime(taken)}! (Score submission failed)`);
+      if (userId && !hasSubmitted) {
+          try {
+            const completeResponse = await fetch(`${SERVER}/api/users/complete/${userId}`, {
+              method: "POST",   // match backend
+              headers: { "Content-Type": "application/json" }
+            });
+
+            const completeData = await completeResponse.json();
+
+            if (completeData.ok) {
+              setMsg(
+                `Congratulations! Quiz completed in ${formatTime(taken)} Let's see if you made it to the leaderboard!`
+              );
+              setHasSubmitted(true);
+              localStorage.setItem("quizSubmitted", "true");
+            } else {
+              setMsg(
+                `Congratulations! Quiz completed in ${formatTime(taken)}! ` +
+                (completeData.error || "Score submission failed.")
+              );
             }
-          } else {
+          } catch (e) {
+            setMsg(
+              `Congratulations! Quiz completed in ${formatTime(taken)}! (Score submission failed)`
+            );
+          }
+        }
+
+ else {
             setMsg(`Congratulations! Quiz completed in ${formatTime(taken)}!`);
           }
         } else {
