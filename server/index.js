@@ -41,32 +41,67 @@ app.get("/", (req, res) => {
 
 // ------------------- Questions -------------------
 const questions = [
-  { id: 1, q: "Sequence: 1, 1, 2, 3, 5, ?", answer: "8" },
-  { id: 2, q: "If: 1=3, 2=3, 3=5, 4=4, 5=4, so 6=?", answer: "3" },
+  { id: 1, q: "Next in series: 0,1,1,2,3,?", answer: "5", type: "text" },
+
+  // Q2 - Image puzzle with image options
   {
-    id: 3,
-    q: "1,2,3,4,5,6,7,8,9 after removing one number and remaining sum is even → which type of number was removed?",
-    answer: "odd",
+    id: 2,
+    q: "Solve the puzzle from the given image:",
+    type: "image",
+    answerType: "mcq-image",
+    questionImage: "/public/q2.png",
+    options: [
+      { key: "a", image: "/public/q2_a.png" },
+      { key: "b", image: "/public/q2_b.png" },
+      { key: "c", image: "/public/q2_c.png" },
+      { key: "d", image: "/public/q2_d.png" },
+    ],
+    answer: "a",
   },
-  { id: 4, q: "If CAT=24, DOG=26, so BAT=?", answer: "23" },
+
+  // Q3 - Normal text question
+  { id: 3, q: "Next letter in series: A,D,G,J, ?", answer: "M", type: "text" },
+
+  // Q4 - Image-based with TEXT options
   {
-    id: 5,
-    q: "682 → one digit right but wrong place \n 614 → one digit right and right place \n 206 → two digits right but wrong places \n What is the code?",
-    answer: "042",
+    id: 4,
+    q: "Which 'X' (pattern) can be formed by the given shapes?",
+    type: "image",
+    answerType: "mcq-text",
+    questionImage: "/public/q4.png",
+    options: [
+      { key: "a", text: "1" },
+      { key: "b", text: "2" },
+      { key: "c", text: "3" },
+      { key: "d", text: "4" },
+    ],
+    answer: "b",
   },
+
+  
+  { id: 5, q: "Find the odd one out: \n3, 5, 11, 14, 17, 21", answer: "14", type: "text" },
+
+  // 🆕 Q6 - Image + Free-text input
   {
     id: 6,
-    q: "Fill in the question mark in the puzzle: Grid 1: Top 18, Left 9, Right 6, Bottom 17, Center 38. Grid 2: Top 12, Left 8, Right 3, Bottom 12, Center 29. Grid 3: Top 13, Left 11, Right 7, Bottom 8, Center ?",
-    answer: "25",
+    q: "Which number completes the puzzle?",
+    type: "image",
+    answerType: "text", // free-text input
+    questionImage: "/public/q6.png",
+    answer: "19",
   },
-  { id: 7, q: "What did you find?", answer: "111025" },
+
+  { id: 7, q: "What did you find?", answer: "111025", type: "text" },
 ];
+
 
 // ------------------- API Endpoints -------------------
 
 // Return questions (without answers)
 app.get("/api/questions", (req, res) => {
-  const qs = questions.map(({ id, q }) => ({ id, q }));
+  const qs = questions.map(({ id, q, type, answerType, questionImage, options }) => ({
+    id, q, type, answerType, questionImage, options
+  }));
   res.json(qs);
 });
 

@@ -62,7 +62,8 @@ router.post("/complete/:userId", async (req, res) => {
         name: user.name, 
         startTime: user.startTime, 
         endTime: user.endTime, 
-        totalTime: user.totalTime 
+        totalTime: user.totalTime, 
+        completed: user.completed
       } 
     });
   } catch (err) {

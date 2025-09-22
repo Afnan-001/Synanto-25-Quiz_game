@@ -216,10 +216,126 @@ export default function App() {
     );
   }
 
+  // Helper to render question UI based on type
+  const renderQuestion = (q) => {
+    if (!q) return null;
+    // Text question
+    if (q.type === "text") {
+      return (
+        <>
+          <div style={{marginTop:12}}>
+            <input
+              value={answer}
+              onChange={e => setAnswer(e.target.value)}
+              placeholder="Type your answer here"
+              style={{padding: "8px", fontSize: "14px", width: "300px"}}
+            />
+          </div>
+          <div style={{marginTop:12}}>
+            <button onClick={submitAnswer} disabled={isLoadingClue}>
+              {isLoadingClue ? "Loading..." : "Submit Answer"}
+            </button>
+          </div>
+        </>
+      );
+    }
+    // Image question with MCQ-image options
+    if (q.type === "image" && q.answerType === "mcq-image" && q.options) {
+      return (
+        <>
+          <div style={{marginTop:12}}>
+            <img src={SERVER + q.questionImage} alt="Question" style={{maxWidth: "100%", marginBottom: "16px"}} />
+          </div>
+          <div style={{display: "flex", gap: "16px", flexWrap: "wrap", marginTop:12}}>
+            {q.options.map(opt => (
+              <img
+                key={opt.key}
+                src={SERVER + opt.image}
+                alt={opt.key}
+                style={{
+                  width: "150px",
+                  cursor: "pointer",
+                  border: answer === opt.key ? "3px solid #06b6d4" : "2px solid #ccc",
+                  borderRadius: "6px",
+                  boxShadow: answer === opt.key ? "0 0 8px #06b6d4" : "none"
+                }}
+                onClick={() => setAnswer(opt.key)}
+              />
+            ))}
+          </div>
+          <div style={{marginTop:12}}>
+            <button onClick={() => submitAnswer(answer)} disabled={!answer || isLoadingClue}>
+              {isLoadingClue ? "Loading..." : "Submit Answer"}
+            </button>
+          </div>
+        </>
+      );
+    }
+    // Image question with MCQ-text options
+    if (q.type === "image" && q.answerType === "mcq-text" && q.options) {
+      return (
+        <>
+          <div style={{marginTop:12}}>
+            <img src={SERVER + q.questionImage} alt="Question" style={{maxWidth: "100%", marginBottom: "16px"}} />
+          </div>
+          <div style={{display: "flex", gap: "12px", marginTop: "8px"}}>
+            {q.options.map(opt => (
+              <button
+                key={opt.key}
+                onClick={() => setAnswer(opt.key)}
+                style={{
+                  padding: "6px 12px",
+                  cursor: "pointer",
+                  background: answer === opt.key ? "#06b6d4" : "#fff",
+                  color: answer === opt.key ? "#fff" : "#222",
+                  border: answer === opt.key ? "2px solid #06b6d4" : "1px solid #ccc",
+                  borderRadius: "6px",
+                  fontWeight: answer === opt.key ? "bold" : "normal"
+                }}
+              >
+                {opt.text}
+              </button>
+            ))}
+          </div>
+          <div style={{marginTop:12}}>
+            <button onClick={() => submitAnswer(answer)} disabled={!answer || isLoadingClue}>
+              {isLoadingClue ? "Loading..." : "Submit Answer"}
+            </button>
+          </div>
+        </>
+      );
+    }
+    // Image question with free-text input
+    if (q.type === "image" && q.answerType === "text") {
+      return (
+        <>
+          <div style={{marginTop:12}}>
+            <img src={SERVER + q.questionImage} alt="Question" style={{maxWidth: "100%", marginBottom: "16px"}} />
+          </div>
+          <div style={{marginTop:12}}>
+            <input
+              value={answer}
+              onChange={e => setAnswer(e.target.value)}
+              placeholder="Type your answer here"
+              style={{padding: "8px", fontSize: "14px", width: "200px"}}
+            />
+          </div>
+          <div style={{marginTop:12}}>
+            <button onClick={submitAnswer} disabled={isLoadingClue}>
+              {isLoadingClue ? "Loading..." : "Submit Answer"}
+            </button>
+          </div>
+        </>
+      );
+    }
+    return null;
+  };
+
+  // ...existing code...
   return (
     <div className="app">
       <h1>Sequential Quiz — Collect 6 clues</h1>
-      
+
       {!questions.length && (
         <div className="question">
           <h2>Welcome to the Quiz Game!</h2>
@@ -240,19 +356,7 @@ export default function App() {
             Time: {formatTime(elapsedTime)}
           </div>
           <div><strong>Question {current+1}:</strong> {questions[current].q}</div>
-          <div style={{marginTop:12}}>
-            <input 
-              value={answer} 
-              onChange={e=>setAnswer(e.target.value)} 
-              placeholder="Type your answer here" 
-              style={{padding: "8px", fontSize: "14px", width: "300px"}}
-            />
-          </div>
-          <div style={{marginTop:12}}>
-            <button onClick={submitAnswer} disabled={isLoadingClue}>
-              {isLoadingClue ? "Loading..." : "Submit Answer"}
-            </button>
-          </div>
+          {renderQuestion(questions[current])}
           <div style={{marginTop:12,color:"#9cc"}}> {msg} </div>
         </div>
       )}
