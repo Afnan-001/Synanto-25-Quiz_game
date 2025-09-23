@@ -6,6 +6,16 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
+const cors = require("cors");
+app.use(cors({
+  origin: "https://synanto-25-quiz-game.vercel.app", // allow only your frontend
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+// If using preflight requests, also handle OPTIONS explicitly
+app.options("*", cors());
+
 
 dotenv.config();
 
